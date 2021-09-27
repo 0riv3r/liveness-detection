@@ -87,8 +87,8 @@ const App = () => {
 
   return (
     <div className="App">
-      <header>
-        <h1>Camera app（With face analysis）</h1>
+      <header className="header">
+        <h1>Liveness Detection</h1>
       </header>       
       {(
       <>
@@ -118,9 +118,9 @@ const App = () => {
             </button>
             <button onClick={() => rekognizeHandler()}>Analyze</button>
           </div>
-          <div>
+          {/* <div>
             <img src={url} alt="Screenshot" />
-          </div>
+          </div> */}
           {typeof rekognizeResult !== "undefined" && (
             <div className="rekognizeResult">
               <div>{"Confidence: " + getConfidence(rekognizeResult)}</div>
