@@ -13,7 +13,7 @@
 
  button {
    position: absolute;
-   bottom: 350px;
+   bottom: 450px;
    left: 20px;
 
    appearance: none;
@@ -41,7 +41,7 @@
  }
 
  header {
-  padding-top: 10%;
+  padding-top: 3%;
   padding: 50;
   color: #D0D0D0;
   font-size: 24px;
@@ -66,5 +66,5 @@
   line-height: 1.8;
   padding-left: 20px;
   position: absolute;
-  bottom: 200px;
+  top: 500px;
 }

@@ -26,7 +26,7 @@ const rekognitionClient = new AWS.Rekognition({
   apiVersion: "2016-06-27",
 });
 
-//Amazon Rekognitionによる顔分析
+// Face analysis by Amazon Rekognition
 const detectFaces = async (imageData) => {
   const params = {
     Image: {
@@ -40,29 +40,43 @@ const detectFaces = async (imageData) => {
   return await rekognitionClient.detectFaces(params).promise();
 };
 
-//分析結果からConfidence（分析結果の信頼度）取得
+const getNumberOfPeople = (rekognizeResult) => {
+  return (rekognizeResult.FaceDetails).length;
+};
+
+// Analysis results: Confidence level
 const getConfidence = (rekognizeResult) => {
     return (rekognizeResult.FaceDetails)[0].Confidence;
 };
 
-//分析結果からLowAge（推測される年齢範囲の加減）取得
+// Analysis results: LowAge（estimated low age range)
 const getLowAge = (rekognizeResult) => {
     return (rekognizeResult.FaceDetails)[0].AgeRange?.Low;
 };
 
-//分析結果からHighAge（推測される年齢範囲の上限）取得
+// Analysis results: HighAge（estimated high age range)
 const getHighAge = (rekognizeResult) => {
     return (rekognizeResult.FaceDetails)[0].AgeRange?.High;
 };
 
-//分析結果からEyeglasses（眼鏡を掛けているか）取得
+// Analysis results: Eyeglasses
 const getIsWearingEyeGlasses = (rekognizeResult) => {
     return (rekognizeResult.FaceDetails)[0].Eyeglasses?.Value;
 };
 
-// Are you wearing sunglasses?
+// Analysis results: Sunglasses
 const getIsWearingSunGlasses = (rekognizeResult) => {
   return (rekognizeResult.FaceDetails)[0].Sunglasses?.Value;
+};
+
+// Analysis results: Smile
+const getIsSmiling = (rekognizeResult) => {
+  return (rekognizeResult.FaceDetails)[0].Smile?.Value;
+};
+
+// Analysis results: Left Eye
+const getEyeLeft = (rekognizeResult) => {
+  return (rekognizeResult.FaceDetails)[0].Landmarks[0].Type?.Value;
 };
 
 const App = () => {
@@ -107,15 +121,16 @@ const App = () => {
       )}
       {url && (
         <>
+          {/* <div>{rekognizeHandler()}</div> */}
+          {/* <div>{setUrl(undefined)}</div> */}
+          {/* <div>
+            {
+              setInterval(function() {
+                rekognizeHandler()
+              }, 10000)
+            }
+          </div> */}
           <div>
-            <button
-              onClick={() => {
-                setUrl(null);
-                setRekognizeResult(undefined);
-              }}
-            >
-              Delete
-            </button>
             <button onClick={() => rekognizeHandler()}>Analyze</button>
           </div>
           {/* <div>
@@ -123,6 +138,7 @@ const App = () => {
           </div> */}
           {typeof rekognizeResult !== "undefined" && (
             <div className="rekognizeResult">
+              <div>{"Number of People: " + getNumberOfPeople(rekognizeResult)}</div>
               <div>{"Confidence: " + getConfidence(rekognizeResult)}</div>
               <div>
                 {"AgeRange: " +
@@ -135,6 +151,12 @@ const App = () => {
               </div>
               <div>
                 {"Sunglasses: " + getIsWearingSunGlasses(rekognizeResult)}
+              </div>
+              <div>
+                {"Smile: " + getIsSmiling(rekognizeResult)}
+              </div>
+              <div>
+                {"getEyeLeft: " + getEyeLeft(rekognizeResult)}
               </div>
             </div>
           )}
