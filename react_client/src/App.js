@@ -139,7 +139,7 @@ const App = () => {
 
     // Draw mesh
     const ctx = canvasRef.current.getContext("2d");
-    drawRect(x, y, width, height, ctx); 
+    drawRect(x * videoWidth - 255, y * videoHeight - 20, width, height, ctx); 
   }
 
 
@@ -232,8 +232,10 @@ const App = () => {
                       getEyeLeft(rekognizeResult).y * webcamRef.current.video.height)}
               </div> */}
               <div>
-                {rect(getChinBottom(rekognizeResult).x * webcamRef.current.video.width - 255, 
-                      getChinBottom(rekognizeResult).y * webcamRef.current.video.height - 20)}
+                {rect(getChinBottom(rekognizeResult).x, 
+                      getChinBottom(rekognizeResult).y)}
+                {/* {rect(getChinBottom(rekognizeResult).x * webcamRef.current.video.width - 255, 
+                      getChinBottom(rekognizeResult).y * webcamRef.current.video.height - 20)} */}
               </div>
             </div>
           )}
