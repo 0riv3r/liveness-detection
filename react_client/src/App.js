@@ -142,7 +142,6 @@ const App = () => {
     drawRect(x * videoWidth - 255, y * videoHeight - 20, width, height, ctx); 
   }
 
-
   return (
     <div className="App">
       <header className="header">
@@ -227,15 +226,13 @@ const App = () => {
                       getFaceBoundingBox(rekognizeResult).Width * webcamRef.current.video.width,
                       getFaceBoundingBox(rekognizeResult).Height * webcamRef.current.video.height)}
               </div> */}
-              {/* <div>
-                {rect(getEyeLeft(rekognizeResult).x * webcamRef.current.video.width, 
-                      getEyeLeft(rekognizeResult).y * webcamRef.current.video.height)}
-              </div> */}
+              <div>
+                {rect(getEyeLeft(rekognizeResult).x, 
+                      getEyeLeft(rekognizeResult).y)}
+              </div>
               <div>
                 {rect(getChinBottom(rekognizeResult).x, 
                       getChinBottom(rekognizeResult).y)}
-                {/* {rect(getChinBottom(rekognizeResult).x * webcamRef.current.video.width - 255, 
-                      getChinBottom(rekognizeResult).y * webcamRef.current.video.height - 20)} */}
               </div>
             </div>
           )}
