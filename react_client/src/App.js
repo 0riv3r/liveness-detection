@@ -41,42 +41,45 @@ const detectFaces = async (imageData) => {
 };
 
 const getNumberOfPeople = (rekognizeResult) => {
-  return (rekognizeResult.FaceDetails).length;
+  return rekognizeResult.FaceDetails.length;
 };
 
 // Analysis results: Confidence level
 const getConfidence = (rekognizeResult) => {
-    return (rekognizeResult.FaceDetails)[0].Confidence;
+    return rekognizeResult.FaceDetails[0].Confidence;
 };
 
 // Analysis results: LowAge（estimated low age range)
 const getLowAge = (rekognizeResult) => {
-    return (rekognizeResult.FaceDetails)[0].AgeRange?.Low;
+    return rekognizeResult.FaceDetails[0].AgeRange.Low;
 };
 
 // Analysis results: HighAge（estimated high age range)
 const getHighAge = (rekognizeResult) => {
-    return (rekognizeResult.FaceDetails)[0].AgeRange?.High;
+    return rekognizeResult.FaceDetails[0].AgeRange.High;
 };
 
 // Analysis results: Eyeglasses
 const getIsWearingEyeGlasses = (rekognizeResult) => {
-    return (rekognizeResult.FaceDetails)[0].Eyeglasses?.Value;
+    return (rekognizeResult.FaceDetails)[0].Eyeglasses.Value;
 };
 
 // Analysis results: Sunglasses
 const getIsWearingSunGlasses = (rekognizeResult) => {
-  return (rekognizeResult.FaceDetails)[0].Sunglasses?.Value;
+  return rekognizeResult.FaceDetails[0].Sunglasses.Value;
 };
 
 // Analysis results: Smile
 const getIsSmiling = (rekognizeResult) => {
-  return (rekognizeResult.FaceDetails)[0].Smile?.Value;
+  return rekognizeResult.FaceDetails[0].Smile.Value;
 };
 
 // Analysis results: Left Eye
 const getEyeLeft = (rekognizeResult) => {
-  return (rekognizeResult.FaceDetails)[0].Landmarks[0].Type?.Value;
+  const x = rekognizeResult.FaceDetails[0].Landmarks[0].X,
+        y = rekognizeResult.FaceDetails[0].Landmarks[0].Y;
+
+  return {x,y};
 };
 
 const App = () => {
@@ -156,7 +159,10 @@ const App = () => {
                 {"Smile: " + getIsSmiling(rekognizeResult)}
               </div>
               <div>
-                {"getEyeLeft: " + getEyeLeft(rekognizeResult)}
+                {"Left eye x: " + getEyeLeft(rekognizeResult).x}
+              </div>
+              <div>
+                {"Left eye y: " + getEyeLeft(rekognizeResult).y}
               </div>
             </div>
           )}
