@@ -51,14 +51,14 @@ const getConfidence = (rekognizeResult) => {
     return rekognizeResult.FaceDetails[0].Confidence;
 };
 
-// Analysis results: LowAge（estimated low age range)
-const getLowAge = (rekognizeResult) => {
-    return rekognizeResult.FaceDetails[0].AgeRange.Low;
-};
+// Analysis results: Pose
+const getPose = (rekognizeResult) => {
 
-// Analysis results: HighAge（estimated high age range)
-const getHighAge = (rekognizeResult) => {
-    return rekognizeResult.FaceDetails[0].AgeRange.High;
+  const pitch = rekognizeResult.FaceDetails[0].Pose.Pitch;
+  const roll = rekognizeResult.FaceDetails[0].Pose.Roll;
+  const yaw = rekognizeResult.FaceDetails[0].Pose.Yaw;
+
+  return {pitch, roll, yaw};
 };
 
 // Analysis results: Eyeglasses
@@ -83,17 +83,6 @@ const getChinBottom = (rekognizeResult) => {
   return {x,y};
 };
 
-// const getFaceBoundingBox = (rekognizeResult) => {
-//   return rekognizeResult.FaceDetails[0].BoundingBox;
-//   /*
-//   BoundingBox:
-//   Height: 0.41345128417015076
-//   Left: 0.39006850123405457
-//   Top: 0.19800728559494019
-//   Width: 0.13521090149879456
-//   */
-// }
-
 // Analysis results: Left Eye
 const getEyeLeft = (rekognizeResult) => {
   const x = rekognizeResult.FaceDetails[0].Landmarks[0].X,
@@ -104,6 +93,7 @@ const getEyeLeft = (rekognizeResult) => {
 
 const App = () => {
 
+  let now = new Date();
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
   const [url, setUrl] = useState(null);
@@ -123,23 +113,105 @@ const App = () => {
     console.log(result);
   };
 
-  const rect = (x, y, width=40, height=20) => {
+  const getRealFaceRectBoundaries = (rekognizeResult) => {
+
+    const x_offset = -35;// -180;
+    const y_offset = 5;
+    const face_bounding_box = rekognizeResult.FaceDetails[0].BoundingBox;
+    /*
+    BoundingBox:
+    Height: 0.41345128417015076
+    Left: 0.39006850123405457
+    Top: 0.19800728559494019
+    Width: 0.13521090149879456
+    */
+
     // Get Video Properties
-    //const video = webcamRef.current.video;
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
 
-    // Set video width
-    webcamRef.current.video.width = videoWidth;
-    webcamRef.current.video.height = videoHeight;
+    const x = face_bounding_box.Left * videoWidth + x_offset;
+    const y = face_bounding_box.Top * videoHeight + y_offset;
+    const width = face_bounding_box.Width * videoWidth;
+    const height = face_bounding_box.Height * videoHeight;
+    const right = x + width;
+    const bottom = y + height;
+
+    const color = 'purple'
+
+    return {x, y, width, height, right, bottom, color};
+  }
+
+  const getFaceBoundariesConstraints = (rekognizeResult) => {
+    // Get Video Properties
+    const videoWidth = webcamRef.current.video.videoWidth;
+    const videoHeight = webcamRef.current.video.videoHeight;
+
+    let color = 'red'
+
+    const x_offset = -10;
+    const y_offset = -20;
+    const with_offset = 10;
+    const height_offset = 40;
+
+
+    const x = (videoWidth / 4) + x_offset;
+    const y = (videoHeight / 4) + y_offset;
+    const width = (videoWidth / 3) + with_offset;
+    const height = (videoHeight / 2) + height_offset;
+
+    const right = x + width;
+    const bottom = y + height;
+
+    const diff_offset = 5;
+
+    if( getRealFaceRectBoundaries(rekognizeResult).x - diff_offset > x &&
+        getRealFaceRectBoundaries(rekognizeResult).y - diff_offset > y &&
+        getRealFaceRectBoundaries(rekognizeResult).right + diff_offset < right &&
+        getRealFaceRectBoundaries(rekognizeResult).bottom + diff_offset < bottom ){
+          color = 'green'
+        }
+
+    return{x, y, width,height, color};
+  }
+
+  const getChinRect = (rekognizeResult) => {
+    // Get Video Properties
+    const videoWidth = webcamRef.current.video.videoWidth;
+    const videoHeight = webcamRef.current.video.videoHeight;
+
+    const x_offset = -55;
+    const y_offset = -15;
+
+    // Chin boundary
+    const x = (getChinBottom(rekognizeResult).x  * videoWidth) + x_offset;
+    const y = (getChinBottom(rekognizeResult).y  * videoHeight) + y_offset;
+    const width = 40;
+    const height = 20; 
+    const color = 'yellow'
+
+    return{x, y, width,height, color};
+  }
+
+  const drawAllRects = (rekognizeResult) => {
+    // Get Video Properties
+    const videoWidth = webcamRef.current.video.videoWidth;
+    const videoHeight = webcamRef.current.video.videoHeight;
 
     // Set canvas height and width
     canvasRef.current.width = videoWidth;
     canvasRef.current.height = videoHeight;
-
-    // Draw mesh
     const ctx = canvasRef.current.getContext("2d");
-    drawRect(x * videoWidth - 255, y * videoHeight - 20, width, height, ctx); 
+
+    let rects = [];
+    // Real face rect
+    rects.push(getRealFaceRectBoundaries(rekognizeResult))
+    // Face boundary constraints
+    rects.push(getFaceBoundariesConstraints(rekognizeResult))
+    // Chin boundary rect
+    rects.push(getChinRect(rekognizeResult))
+
+    drawRect(rects, ctx);
   }
 
   return (
@@ -200,10 +272,17 @@ const App = () => {
               <div>{"Number of People: " + getNumberOfPeople(rekognizeResult)}</div>
               <div>{"Confidence: " + getConfidence(rekognizeResult)}</div>
               <div>
-                {"AgeRange: " +
-                  getLowAge(rekognizeResult) +
-                  " ~ " +
-                  getHighAge(rekognizeResult)}
+                {"Now: " +
+                now.getMinutes() + ":" + 
+                now.getSeconds()}
+              </div>
+              <div>
+                {"Pose: " +
+                  getPose(rekognizeResult).pitch +
+                  ", " +
+                  getPose(rekognizeResult).roll + 
+                  ", " +
+                  getPose(rekognizeResult).yaw}
               </div>
               <div>
                 {"Eyeglasses: " + getIsWearingEyeGlasses(rekognizeResult)}
@@ -215,25 +294,30 @@ const App = () => {
                 {"Smile: " + getIsSmile(rekognizeResult)}
               </div>
               <div>
-                {"Left eye x: " + getEyeLeft(rekognizeResult).x}
+                {"Left eye: " + 
+                  getEyeLeft(rekognizeResult).x + 
+                  ", " +
+                  getEyeLeft(rekognizeResult).y}
               </div>
               <div>
-                {"Left eye y: " + getEyeLeft(rekognizeResult).y}
+                {drawAllRects(rekognizeResult)}
               </div>
               {/* <div>
-                {rect(getFaceBoundingBox(rekognizeResult).Left * webcamRef.current.video.width, 
-                      getFaceBoundingBox(rekognizeResult).Top * webcamRef.current.video.height,
-                      getFaceBoundingBox(rekognizeResult).Width * webcamRef.current.video.width,
-                      getFaceBoundingBox(rekognizeResult).Height * webcamRef.current.video.height)}
+                {setFaceRectBoundaries(getFaceBoundingBox(rekognizeResult).Left, 
+                      getFaceBoundingBox(rekognizeResult).Top,
+                      getFaceBoundingBox(rekognizeResult).Width,
+                      getFaceBoundingBox(rekognizeResult).Height)}
               </div> */}
-              <div>
+              {/* <div>
                 {rect(getEyeLeft(rekognizeResult).x, 
                       getEyeLeft(rekognizeResult).y)}
               </div>
               <div>
                 {rect(getChinBottom(rekognizeResult).x, 
                       getChinBottom(rekognizeResult).y)}
-              </div>
+              </div> */}
+              <button onClick={capture}>Capture!</button>
+              {/* {capture()} */}
             </div>
           )}
         </>

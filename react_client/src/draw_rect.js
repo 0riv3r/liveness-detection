@@ -1,8 +1,8 @@
-export const drawRect = (x, y, width, height, ctx) =>{
+export const drawRect = (rects, ctx) =>{
     // Set styling
     // const color = Math.floor(Math.random()*16777215).toString(16);
-    const color = 'ff0000'
-    ctx.strokeStyle = '#' + color
+    // const color = 'ff0000'
+    // ctx.strokeStyle = '#' + color
 
     // const text = item; 
     //ctx.font = '18px Arial';
@@ -12,8 +12,15 @@ export const drawRect = (x, y, width, height, ctx) =>{
     //ctx.fillStyle = '#' + color
     //ctx.fillText(text, x, y);
 
+    const transparent = 'rgba(255, 0, 0, 0.5)'
+
+    ctx.fillStyle = transparent;
     ctx.lineWidth = "3";
-    // ctx.strokeStyle = "red";
-    ctx.rect(x, y, width, height); 
-    ctx.stroke();
+
+    for(let i=0;i<rects.length;++i){
+      var rect = new Path2D();
+      rect.rect(rects[i].x, rects[i].y, rects[i].width, rects[i].height);
+      ctx.strokeStyle = rects[i].color;
+      ctx.stroke(rect);
+    }    
   }
