@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import Webcam from "react-webcam";
 import AWS from "aws-sdk";
 
@@ -91,12 +91,33 @@ const getEyeLeft = (rekognizeResult) => {
   return {x,y};
 };
 
+/* ************* */
+//    APP
+/* ************* */
+
 const App = () => {
 
   let now = new Date();
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
   const [url, setUrl] = useState(null);
+
+  // update offset according to the video frame
+  const init_videoOffset = {left:0, top:0, bottom:0}
+  const [videoOffset, setVideoOffset] = useState(init_videoOffset);
+
+  const handleUserMedia = () => {
+    if(webcamRef.current && videoOffset.left === 0 && videoOffset.top === 0){
+      setVideoOffset({
+        left:webcamRef.current.video.offsetLeft, 
+        top:webcamRef.current.video.offsetTop,
+        bottom:webcamRef.current.video.offsetTop + webcamRef.current.video.offsetHeight
+      })
+    }
+  }
+
+  const { current } = webcamRef;
+  useEffect(handleUserMedia, [current, videoOffset.left, videoOffset.top]);
 
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -115,7 +136,7 @@ const App = () => {
 
   const getRealFaceRectBoundaries = (rekognizeResult) => {
 
-    const x_offset = -35;// -180;
+    const x_offset = 0;
     const y_offset = 5;
     const face_bounding_box = rekognizeResult.FaceDetails[0].BoundingBox;
     /*
@@ -129,6 +150,8 @@ const App = () => {
     // Get Video Properties
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
+    // const videoOffsetLeft = webcamRef.current.video.offsetLeft
+    // const videoOffsetTop = webcamRef.current.video.offsetTop
 
     const x = face_bounding_box.Left * videoWidth + x_offset;
     const y = face_bounding_box.Top * videoHeight + y_offset;
@@ -151,11 +174,11 @@ const App = () => {
 
     const x_offset = -10;
     const y_offset = -20;
-    const with_offset = 10;
+    const with_offset = 20;
     const height_offset = 40;
 
 
-    const x = (videoWidth / 4) + x_offset;
+    const x = (videoWidth / 3) + x_offset;
     const y = (videoHeight / 4) + y_offset;
     const width = (videoWidth / 3) + with_offset;
     const height = (videoHeight / 2) + height_offset;
@@ -180,8 +203,9 @@ const App = () => {
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
 
-    const x_offset = -55;
-    const y_offset = -15;
+    // chin offsets
+    const x_offset = -19;
+    const y_offset = -17;
 
     // Chin boundary
     const x = (getChinBottom(rekognizeResult).x  * videoWidth) + x_offset;
@@ -197,10 +221,15 @@ const App = () => {
     // Get Video Properties
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
+    // const videoOffsetLeft = webcamRef.current.video.offsetLeft
+    // const videoOffsetTop = webcamRef.current.video.offsetTop
 
     // Set canvas height and width
     canvasRef.current.width = videoWidth;
     canvasRef.current.height = videoHeight;
+    // const offsetLeft = canvasRef.current.offsetLeft;
+    // const offsetTop = canvasRef.current.offsetTop;   
+
     const ctx = canvasRef.current.getContext("2d");
 
     let rects = [];
@@ -214,14 +243,36 @@ const App = () => {
     drawRect(rects, ctx);
   }
 
+/* ************* */
+//    RETURN
+/* ************* */
+
   return (
-    <div className="App">
-      <header className="header">
-        <h1>Liveness Detection</h1>
-      </header>       
+    <div className="App">       
       {(
       <>
         <div className="webcam">
+          <Webcam
+            style={{
+              position: "absolute",
+              marginLeft: "auto",
+              marginRight: "auto",
+              left: 0,
+              right: 0,
+              textAlign: "center",
+              zindex: 8,
+              width: 540,
+              height: 360,
+              // width: 640,
+              // height: 480,
+            }}
+            audio={false}
+            width={540}
+            height={360}
+            ref={webcamRef}
+            screenshotFormat="image/jpeg"
+            videoConstraints={videoConstraints}
+          />
           <canvas
             ref={canvasRef}
             style={{
@@ -238,18 +289,26 @@ const App = () => {
               // height: 480,
             }}
           />
-          <Webcam
-            audio={false}
-            width={540}
-            height={360}
-            ref={webcamRef}
-            screenshotFormat="image/jpeg"
-            videoConstraints={videoConstraints}
-          />
         </div>
-        <button onClick={capture}>Capture!</button>
+        <div>
+          <button
+          style={{
+            left: videoOffset.left,
+            top: videoOffset.bottom
+          }}
+          onClick={capture}
+          >Capture!</button>
+        </div>
       </>
       )}
+      <header className="header"
+        style={{
+          left: videoOffset.left,
+          top: videoOffset.bottom + 35
+        }}
+        >
+        <h1>Liveness Detection</h1>
+      </header>
       {url && (
         <>
           {/* <div>{rekognizeHandler()}</div> */}
@@ -262,14 +321,19 @@ const App = () => {
             }
           </div> */}
           <div>
-            <button onClick={() => rekognizeHandler()}>Analyze</button>
+            <button 
+            style={{
+              left: videoOffset.left,
+              top: videoOffset.bottom
+            }}
+            onClick={() => rekognizeHandler()}>Analyze</button>
           </div>
           {/* <div>
             <img src={url} alt="Screenshot" />
           </div> */}
           {typeof rekognizeResult !== "undefined" && (
             <div className="rekognizeResult">
-              <div>{"Number of People: " + getNumberOfPeople(rekognizeResult)}</div>
+              {/* <div>{"Number of People: " + getNumberOfPeople(rekognizeResult)}</div>
               <div>{"Confidence: " + getConfidence(rekognizeResult)}</div>
               <div>
                 {"Now: " +
@@ -298,7 +362,7 @@ const App = () => {
                   getEyeLeft(rekognizeResult).x + 
                   ", " +
                   getEyeLeft(rekognizeResult).y}
-              </div>
+              </div> */}
               <div>
                 {drawAllRects(rekognizeResult)}
               </div>
@@ -316,7 +380,12 @@ const App = () => {
                 {rect(getChinBottom(rekognizeResult).x, 
                       getChinBottom(rekognizeResult).y)}
               </div> */}
-              <button onClick={capture}>Capture!</button>
+              {/* <button 
+              style={{
+                left: videoOffset.left,
+                top: videoOffset.bottom
+              }}
+              onClick={capture}>Capture!</button> */}
               {/* {capture()} */}
             </div>
           )}
