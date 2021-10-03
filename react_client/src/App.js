@@ -102,6 +102,8 @@ const App = () => {
   const canvasRef = useRef(null);
   const [url, setUrl] = useState(null);
 
+  const ANALYSIS_INTERVAL = 200; // every 0.3 seconds, analyze head and chin locations
+
   // update offset according to the video frame
   const init_videoOffset = {left:0, top:0, bottom:0}
   const [videoOffset, setVideoOffset] = useState(init_videoOffset);
@@ -115,10 +117,6 @@ const App = () => {
       })
     }
   }
-
-  const { current } = webcamRef;
-  useEffect(handleUserMedia, [current, videoOffset.left, videoOffset.top]);
-
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
@@ -128,11 +126,19 @@ const App = () => {
   }, [webcamRef]);
 
   const [rekognizeResult, setRekognizeResult] = useState();
-  const rekognizeHandler = async () => {
-    const result = await detectFaces(url);
-    setRekognizeResult(result);
-    console.log(result);
-  };
+  // const rekognizeHandler = async () => {
+  //   const result = await detectFaces(url);
+  //   setRekognizeResult(result);
+  //   console.log(result);
+  // };
+
+  const rekognizeHandler = useCallback( async() => {
+    if(url){
+      const result = await detectFaces(url);
+      setRekognizeResult(result);
+      console.log(result);
+    }
+  }, [url]);
 
   const getRealFaceRectBoundaries = (rekognizeResult) => {
 
@@ -242,6 +248,18 @@ const App = () => {
 
     drawRect(rects, ctx);
   }
+
+  const { current } = webcamRef;
+  useEffect(handleUserMedia, [current, videoOffset.left, videoOffset.top]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('analyze head and chin locations');
+      capture();
+      rekognizeHandler();
+    }, ANALYSIS_INTERVAL);
+    return () => clearInterval(interval); // This represents the unmount function, in which we need to clear your interval to prevent memory leaks.
+  }, [capture, rekognizeHandler])
 
 /* ************* */
 //    RETURN
