@@ -42,51 +42,51 @@ const detectFaces = async (imageData) => {
   return await rekognitionClient.detectFaces(params).promise();
 };
 
-const getNumberOfPeople = (rekognizeResult) => {
-  return rekognizeResult.FaceDetails.length;
+const getNumberOfPeople = (analyzeResult) => {
+  return analyzeResult.FaceDetails.length;
 };
 
 // Analysis results: Confidence level
-const getConfidence = (rekognizeResult) => {
-    return rekognizeResult.FaceDetails[0].Confidence;
+const getConfidence = (analyzeResult) => {
+    return analyzeResult.FaceDetails[0].Confidence;
 };
 
 // Analysis results: Pose
-const getPose = (rekognizeResult) => {
+const getPose = (analyzeResult) => {
 
-  const pitch = rekognizeResult.FaceDetails[0].Pose.Pitch;
-  const roll = rekognizeResult.FaceDetails[0].Pose.Roll;
-  const yaw = rekognizeResult.FaceDetails[0].Pose.Yaw;
+  const pitch = analyzeResult.FaceDetails[0].Pose.Pitch;
+  const roll = analyzeResult.FaceDetails[0].Pose.Roll;
+  const yaw = analyzeResult.FaceDetails[0].Pose.Yaw;
 
   return {pitch, roll, yaw};
 };
 
 // Analysis results: Eyeglasses
-const getIsWearingEyeGlasses = (rekognizeResult) => {
-    return (rekognizeResult.FaceDetails)[0].Eyeglasses.Value;
+const getIsWearingEyeGlasses = (analyzeResult) => {
+    return (analyzeResult.FaceDetails)[0].Eyeglasses.Value;
 };
 
 // Analysis results: Sunglasses
-const getIsWearingSunGlasses = (rekognizeResult) => {
-  return rekognizeResult.FaceDetails[0].Sunglasses.Value;
+const getIsWearingSunGlasses = (analyzeResult) => {
+  return analyzeResult.FaceDetails[0].Sunglasses.Value;
 };
 
 // Analysis results: Smile
-const getIsSmile = (rekognizeResult) => {
-  return rekognizeResult.FaceDetails[0].Smile.Value;
+const getIsSmile = (analyzeResult) => {
+  return analyzeResult.FaceDetails[0].Smile.Value;
 };
 
-const getChinBottom = (rekognizeResult) => {
-  // rekognizeResult.FaceDetails[0].Landmarks[27].Type ==> "chinBottom"
-  const x = rekognizeResult.FaceDetails[0].Landmarks[27].X,
-        y = rekognizeResult.FaceDetails[0].Landmarks[27].Y;
+const getChinBottom = (analyzeResult) => {
+  // analyzeResult.FaceDetails[0].Landmarks[27].Type ==> "chinBottom"
+  const x = analyzeResult.FaceDetails[0].Landmarks[27].X,
+        y = analyzeResult.FaceDetails[0].Landmarks[27].Y;
   return {x,y};
 };
 
 // Analysis results: Left Eye
-const getEyeLeft = (rekognizeResult) => {
-  const x = rekognizeResult.FaceDetails[0].Landmarks[0].X,
-        y = rekognizeResult.FaceDetails[0].Landmarks[0].Y;
+const getEyeLeft = (analyzeResult) => {
+  const x = analyzeResult.FaceDetails[0].Landmarks[0].X,
+        y = analyzeResult.FaceDetails[0].Landmarks[0].Y;
 
   return {x,y};
 };
@@ -125,26 +125,43 @@ const App = () => {
     }
   }, [webcamRef]);
 
-  const [rekognizeResult, setRekognizeResult] = useState();
-  // const rekognizeHandler = async () => {
+  const [analyzeResult, setRekognizeResult] = useState();
+  // const analyzeHandler = async () => {
   //   const result = await detectFaces(url);
   //   setRekognizeResult(result);
   //   console.log(result);
   // };
 
-  const rekognizeHandler = useCallback( async() => {
+  const [prevPose, setPrevPose] = useState({pitch:0, roll:0, yaw:0});
+  const analyzeHandler = useCallback( async() => {
     if(url){
       const result = await detectFaces(url);
       setRekognizeResult(result);
-      console.log(result);
-    }
-  }, [url]);
+      
+      const pitch = result.FaceDetails[0].Pose.Pitch;
+      const roll = result.FaceDetails[0].Pose.Roll;
+      const yaw = result.FaceDetails[0].Pose.Yaw;
+  
+      const diff_pitch = Math.abs(pitch - prevPose.pitch);
+      const diff_roll = Math.abs(pitch - prevPose.roll);
+      const diff_yaw = Math.abs(pitch - prevPose.yaw);
+  
+      const diff_size = 30
 
-  const getRealFaceRectBoundaries = (rekognizeResult) => {
+      if(diff_pitch > diff_size ||
+         diff_roll > diff_size ||
+         diff_yaw > diff_size) {
+          setPrevPose({pitch:pitch, roll:roll, yaw:yaw})
+          console.log("Head move!");
+      }
+    }
+  }, [url, prevPose.pitch, prevPose.roll, prevPose.yaw]);
+
+  const getRealFaceRectBoundaries = (analyzeResult) => {
 
     const x_offset = 0;
     const y_offset = 5;
-    const face_bounding_box = rekognizeResult.FaceDetails[0].BoundingBox;
+    const face_bounding_box = analyzeResult.FaceDetails[0].BoundingBox;
     /*
     BoundingBox:
     Height: 0.41345128417015076
@@ -171,17 +188,17 @@ const App = () => {
     return {x, y, width, height, right, bottom, color};
   }
 
-  const getFaceBoundariesConstraints = (rekognizeResult) => {
+  const getFaceBoundariesConstraints = (analyzeResult) => {
     // Get Video Properties
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
 
     let color = 'red'
 
-    const x_offset = -10;
-    const y_offset = -20;
-    const with_offset = 20;
-    const height_offset = 40;
+    const x_offset = -20;
+    const y_offset = -30;
+    const with_offset = 40;
+    const height_offset = 60;
 
 
     const x = (videoWidth / 3) + x_offset;
@@ -194,17 +211,17 @@ const App = () => {
 
     const diff_offset = 5;
 
-    if( getRealFaceRectBoundaries(rekognizeResult).x - diff_offset > x &&
-        getRealFaceRectBoundaries(rekognizeResult).y - diff_offset > y &&
-        getRealFaceRectBoundaries(rekognizeResult).right + diff_offset < right &&
-        getRealFaceRectBoundaries(rekognizeResult).bottom + diff_offset < bottom ){
+    if( getRealFaceRectBoundaries(analyzeResult).x - diff_offset > x &&
+        getRealFaceRectBoundaries(analyzeResult).y - diff_offset > y &&
+        getRealFaceRectBoundaries(analyzeResult).right + diff_offset < right &&
+        getRealFaceRectBoundaries(analyzeResult).bottom + diff_offset < bottom ){
           color = 'green'
         }
 
     return{x, y, width,height, color};
   }
 
-  const getChinRect = (rekognizeResult) => {
+  const getChinRect = (analyzeResult) => {
     // Get Video Properties
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
@@ -214,8 +231,8 @@ const App = () => {
     const y_offset = -17;
 
     // Chin boundary
-    const x = (getChinBottom(rekognizeResult).x  * videoWidth) + x_offset;
-    const y = (getChinBottom(rekognizeResult).y  * videoHeight) + y_offset;
+    const x = (getChinBottom(analyzeResult).x  * videoWidth) + x_offset;
+    const y = (getChinBottom(analyzeResult).y  * videoHeight) + y_offset;
     const width = 40;
     const height = 20; 
     const color = 'yellow'
@@ -223,7 +240,7 @@ const App = () => {
     return{x, y, width,height, color};
   }
 
-  const drawAllRects = (rekognizeResult) => {
+  const drawAllRects = (analyzeResult) => {
     // Get Video Properties
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
@@ -240,11 +257,11 @@ const App = () => {
 
     let rects = [];
     // Real face rect
-    rects.push(getRealFaceRectBoundaries(rekognizeResult))
+    rects.push(getRealFaceRectBoundaries(analyzeResult))
     // Face boundary constraints
-    rects.push(getFaceBoundariesConstraints(rekognizeResult))
+    rects.push(getFaceBoundariesConstraints(analyzeResult))
     // Chin boundary rect
-    rects.push(getChinRect(rekognizeResult))
+    rects.push(getChinRect(analyzeResult))
 
     drawRect(rects, ctx);
   }
@@ -254,12 +271,11 @@ const App = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('analyze head and chin locations');
       capture();
-      rekognizeHandler();
+      analyzeHandler();
     }, ANALYSIS_INTERVAL);
     return () => clearInterval(interval); // This represents the unmount function, in which we need to clear your interval to prevent memory leaks.
-  }, [capture, rekognizeHandler])
+  }, [capture, analyzeHandler])
 
 /* ************* */
 //    RETURN
@@ -329,12 +345,12 @@ const App = () => {
       </header>
       {url && (
         <>
-          {/* <div>{rekognizeHandler()}</div> */}
+          {/* <div>{analyzeHandler()}</div> */}
           {/* <div>{setUrl(undefined)}</div> */}
           {/* <div>
             {
               setInterval(function() {
-                rekognizeHandler()
+                analyzeHandler()
               }, 10000)
             }
           </div> */}
@@ -344,15 +360,15 @@ const App = () => {
               left: videoOffset.left,
               top: videoOffset.bottom
             }}
-            onClick={() => rekognizeHandler()}>Analyze</button>
+            onClick={() => analyzeHandler()}>Analyze</button>
           </div>
           {/* <div>
             <img src={url} alt="Screenshot" />
           </div> */}
-          {typeof rekognizeResult !== "undefined" && (
-            <div className="rekognizeResult">
-              {/* <div>{"Number of People: " + getNumberOfPeople(rekognizeResult)}</div>
-              <div>{"Confidence: " + getConfidence(rekognizeResult)}</div>
+          {typeof analyzeResult !== "undefined" && (
+            <div className="analyzeResult">
+              {/* <div>{"Number of People: " + getNumberOfPeople(analyzeResult)}</div>
+              <div>{"Confidence: " + getConfidence(analyzeResult)}</div>
               <div>
                 {"Now: " +
                 now.getMinutes() + ":" + 
@@ -360,43 +376,43 @@ const App = () => {
               </div>
               <div>
                 {"Pose: " +
-                  getPose(rekognizeResult).pitch +
+                  getPose(analyzeResult).pitch +
                   ", " +
-                  getPose(rekognizeResult).roll + 
+                  getPose(analyzeResult).roll + 
                   ", " +
-                  getPose(rekognizeResult).yaw}
+                  getPose(analyzeResult).yaw}
               </div>
               <div>
-                {"Eyeglasses: " + getIsWearingEyeGlasses(rekognizeResult)}
+                {"Eyeglasses: " + getIsWearingEyeGlasses(analyzeResult)}
               </div>
               <div>
-                {"Sunglasses: " + getIsWearingSunGlasses(rekognizeResult)}
+                {"Sunglasses: " + getIsWearingSunGlasses(analyzeResult)}
               </div>
               <div>
-                {"Smile: " + getIsSmile(rekognizeResult)}
+                {"Smile: " + getIsSmile(analyzeResult)}
               </div>
               <div>
                 {"Left eye: " + 
-                  getEyeLeft(rekognizeResult).x + 
+                  getEyeLeft(analyzeResult).x + 
                   ", " +
-                  getEyeLeft(rekognizeResult).y}
+                  getEyeLeft(analyzeResult).y}
               </div> */}
               <div>
-                {drawAllRects(rekognizeResult)}
+                {drawAllRects(analyzeResult)}
               </div>
               {/* <div>
-                {setFaceRectBoundaries(getFaceBoundingBox(rekognizeResult).Left, 
-                      getFaceBoundingBox(rekognizeResult).Top,
-                      getFaceBoundingBox(rekognizeResult).Width,
-                      getFaceBoundingBox(rekognizeResult).Height)}
+                {setFaceRectBoundaries(getFaceBoundingBox(analyzeResult).Left, 
+                      getFaceBoundingBox(analyzeResult).Top,
+                      getFaceBoundingBox(analyzeResult).Width,
+                      getFaceBoundingBox(analyzeResult).Height)}
               </div> */}
               {/* <div>
-                {rect(getEyeLeft(rekognizeResult).x, 
-                      getEyeLeft(rekognizeResult).y)}
+                {rect(getEyeLeft(analyzeResult).x, 
+                      getEyeLeft(analyzeResult).y)}
               </div>
               <div>
-                {rect(getChinBottom(rekognizeResult).x, 
-                      getChinBottom(rekognizeResult).y)}
+                {rect(getChinBottom(analyzeResult).x, 
+                      getChinBottom(analyzeResult).y)}
               </div> */}
               {/* <button 
               style={{
