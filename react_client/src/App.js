@@ -53,12 +53,15 @@ const getConfidence = (analyzeResult) => {
 
 // Analysis results: Pose
 const getPose = (analyzeResult) => {
-
-  const pitch = analyzeResult.FaceDetails[0].Pose.Pitch;
-  const roll = analyzeResult.FaceDetails[0].Pose.Roll;
-  const yaw = analyzeResult.FaceDetails[0].Pose.Yaw;
-
-  return {pitch, roll, yaw};
+  try {
+    const pitch = analyzeResult.FaceDetails[0].Pose.Pitch;
+    // const roll = analyzeResult.FaceDetails[0].Pose.Roll;
+    const yaw = analyzeResult.FaceDetails[0].Pose.Yaw;
+    // return {pitch, roll, yaw};
+    return {pitch, yaw};
+  } catch {
+    return {pitch:0, yaw:0};
+  }
 };
 
 // Analysis results: Eyeglasses
@@ -77,10 +80,14 @@ const getIsSmile = (analyzeResult) => {
 };
 
 const getChinBottom = (analyzeResult) => {
-  // analyzeResult.FaceDetails[0].Landmarks[27].Type ==> "chinBottom"
-  const x = analyzeResult.FaceDetails[0].Landmarks[27].X,
-        y = analyzeResult.FaceDetails[0].Landmarks[27].Y;
-  return {x,y};
+  try {
+    // analyzeResult.FaceDetails[0].Landmarks[27].Type ==> "chinBottom"
+    const x = analyzeResult.FaceDetails[0].Landmarks[27].X,
+          y = analyzeResult.FaceDetails[0].Landmarks[27].Y;
+    return {x,y};
+  } catch {
+    return {x:-10,y:-10};
+  }
 };
 
 // Analysis results: Left Eye
@@ -132,60 +139,76 @@ const App = () => {
   //   console.log(result);
   // };
 
-  const [prevPose, setPrevPose] = useState({pitch:0, roll:0, yaw:0});
+  // const [prevPose, setPrevPose] = useState({pitch:0, roll:0, yaw:0});
+  const [prevPose, setPrevPose] = useState({pitch:0, yaw:0});
   const analyzeHandler = useCallback( async() => {
     if(url){
       const result = await detectFaces(url);
       setRekognizeResult(result);
+
+      const pose = getPose(result);
       
-      const pitch = result.FaceDetails[0].Pose.Pitch;
-      const roll = result.FaceDetails[0].Pose.Roll;
-      const yaw = result.FaceDetails[0].Pose.Yaw;
+      // const pitch = result.FaceDetails[0].Pose.Pitch;
+      // const roll = result.FaceDetails[0].Pose.Roll;
+      // const yaw = result.FaceDetails[0].Pose.Yaw;
+
+      const pitch = pose.pitch;
+      const yaw = pose.yaw;
   
       const diff_pitch = Math.abs(pitch - prevPose.pitch);
-      const diff_roll = Math.abs(pitch - prevPose.roll);
-      const diff_yaw = Math.abs(pitch - prevPose.yaw);
+      // const diff_roll = Math.abs(roll - prevPose.roll);
+      const diff_yaw = Math.abs(yaw - prevPose.yaw);
   
       const diff_size = 30
 
       if(diff_pitch > diff_size ||
-         diff_roll > diff_size ||
+         // diff_roll > diff_size ||
          diff_yaw > diff_size) {
-          setPrevPose({pitch:pitch, roll:roll, yaw:yaw})
-          console.log("Head move!");
+          setPrevPose({pitch:pitch, yaw:yaw})
+          // setPrevPose({pitch:pitch, roll:roll, yaw:yaw})
+          // console.log("Head move!");
+          // console.log(diff_pitch + ', ' + diff_roll + ', ' + diff_yaw)
+          console.log(diff_pitch + ', ' + diff_yaw)
       }
     }
-  }, [url, prevPose.pitch, prevPose.roll, prevPose.yaw]);
+  // }, [url, prevPose.pitch, prevPose.roll, prevPose.yaw]);
+  }, [url, prevPose.pitch, prevPose.yaw]);
 
   const getRealFaceRectBoundaries = (analyzeResult) => {
 
-    const x_offset = 0;
-    const y_offset = 5;
-    const face_bounding_box = analyzeResult.FaceDetails[0].BoundingBox;
-    /*
-    BoundingBox:
-    Height: 0.41345128417015076
-    Left: 0.39006850123405457
-    Top: 0.19800728559494019
-    Width: 0.13521090149879456
-    */
+    try {
+      const x_offset = 0;
+      const y_offset = 5;
+      const face_bounding_box = analyzeResult.FaceDetails[0].BoundingBox;
+      /*
+      BoundingBox:
+      Height: 0.41345128417015076
+      Left: 0.39006850123405457
+      Top: 0.19800728559494019
+      Width: 0.13521090149879456
+      */
 
-    // Get Video Properties
-    const videoWidth = webcamRef.current.video.videoWidth;
-    const videoHeight = webcamRef.current.video.videoHeight;
-    // const videoOffsetLeft = webcamRef.current.video.offsetLeft
-    // const videoOffsetTop = webcamRef.current.video.offsetTop
+      // Get Video Properties
+      const videoWidth = webcamRef.current.video.videoWidth;
+      const videoHeight = webcamRef.current.video.videoHeight;
+      // const videoOffsetLeft = webcamRef.current.video.offsetLeft
+      // const videoOffsetTop = webcamRef.current.video.offsetTop
 
-    const x = face_bounding_box.Left * videoWidth + x_offset;
-    const y = face_bounding_box.Top * videoHeight + y_offset;
-    const width = face_bounding_box.Width * videoWidth;
-    const height = face_bounding_box.Height * videoHeight;
-    const right = x + width;
-    const bottom = y + height;
+      const x = face_bounding_box.Left * videoWidth + x_offset;
+      const y = face_bounding_box.Top * videoHeight + y_offset;
+      const width = face_bounding_box.Width * videoWidth;
+      const height = face_bounding_box.Height * videoHeight;
+      const right = x + width;
+      const bottom = y + height;
 
-    const color = 'purple'
+      const color = 'purple'
 
-    return {x, y, width, height, right, bottom, color};
+      return {x, y, width, height, right, bottom, color};
+    } catch {
+        return {x:-10, y:-10, 
+                width:0, height:0, 
+                right:0, bottom:0, color:'white'}
+    }
   }
 
   const getFaceBoundariesConstraints = (analyzeResult) => {
