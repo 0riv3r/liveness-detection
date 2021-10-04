@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import Webcam from "react-webcam";
 import AWS from "aws-sdk";
+import { CountdownCircleTimer } from "react-countdown-circle-timer";
 
 import { drawRect } from "./draw_rect";
 
@@ -8,6 +9,20 @@ const videoConstraints = {
   width: 540, //720,
   height: 360,
   facingMode: "user",
+};
+
+const renderTime = ({ remainingTime }) => {
+  if (remainingTime === 0) {
+    return <div className="timer">Too lale...</div>;
+  }
+
+  return (
+    <div className="timer">
+      <div className="text">Remaining</div>
+      <div className="value">{remainingTime}</div>
+      <div className="text">seconds</div>
+    </div>
+  );
 };
 
 /*
@@ -141,6 +156,7 @@ const App = () => {
 
   // const [prevPose, setPrevPose] = useState({pitch:0, roll:0, yaw:0});
   const [prevPose, setPrevPose] = useState({pitch:0, yaw:0});
+  const [imgPath, setImgPath] = useState('images/bg.png');
   const analyzeHandler = useCallback( async() => {
     if(url){
       const result = await detectFaces(url);
@@ -168,6 +184,8 @@ const App = () => {
           // setPrevPose({pitch:pitch, roll:roll, yaw:yaw})
           // console.log("Head move!");
           // console.log(diff_pitch + ', ' + diff_roll + ', ' + diff_yaw)
+
+          setImgPath('images/green-check-mark.png')
           console.log(diff_pitch + ', ' + diff_yaw)
       }
     }
@@ -347,7 +365,7 @@ const App = () => {
             }}
           />
         </div>
-        <div>
+        {/* <div>
           <button
           style={{
             left: videoOffset.left,
@@ -355,17 +373,37 @@ const App = () => {
           }}
           onClick={capture}
           >Capture!</button>
-        </div>
+        </div> */}
       </>
       )}
       <header className="header"
         style={{
           left: videoOffset.left,
-          top: videoOffset.bottom + 35
+          top: videoOffset.bottom + 60
         }}
         >
         <h1>Liveness Detection</h1>
       </header>
+      <img src={imgPath} className="verify_icon" alt=" "
+        style={{
+          left: videoOffset.left,
+          top: videoOffset.bottom + 20
+      }}
+      ></img>
+      <div className="timer-wrapper">
+        <CountdownCircleTimer
+          style={{
+            left: videoOffset.left,
+            top: videoOffset.bottom + 20
+          }}
+          isPlaying
+          duration={10}
+          colors={[["#004777", 0.33], ["#F7B801", 0.33], ["#A30000"]]}
+          onComplete={() => [true, 1000]}
+        >
+          {renderTime}
+        </CountdownCircleTimer>
+      </div>
       {url && (
         <>
           {/* <div>{analyzeHandler()}</div> */}
@@ -377,14 +415,14 @@ const App = () => {
               }, 10000)
             }
           </div> */}
-          <div>
+          {/* <div>
             <button 
             style={{
               left: videoOffset.left,
               top: videoOffset.bottom
             }}
             onClick={() => analyzeHandler()}>Analyze</button>
-          </div>
+          </div> */}
           {/* <div>
             <img src={url} alt="Screenshot" />
           </div> */}

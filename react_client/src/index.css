@@ -41,10 +41,19 @@
 
  header {
   position: absolute;
-  
   padding-top: 3%;
   color: #D0D0D0;
   font-size: 24px;
+ }
+
+ .verify_icon {
+  position: absolute;
+  height: 60px;
+  width: 60px;
+ }
+
+ .timer-wrapper {
+  position: absolute;
  }
 
  .webcam {
