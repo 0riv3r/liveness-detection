@@ -110,7 +110,15 @@ const App = () => {
   const canvasRef = useRef(null);
   const [url, setUrl] = useState(null);
 
-  const ANALYSIS_INTERVAL = 200; // every 0.3 seconds, analyze head and chin locations
+  // constants
+  const ANALYSIS_INTERVAL = 200; // every 0.2 seconds, analyze head and chin locations
+  const SIGNS = {
+    pass: 'images/green-check-mark.png',
+    fail: 'images/red-x.png',
+    none: 'images/bg.png'
+  };
+  const COUNTDOWN_MAX = 10;
+
 
   // update offset according to the video frame
   const init_videoOffset = {left:0, top:0, bottom:0}
@@ -125,6 +133,12 @@ const App = () => {
       })
     }
   }
+
+  const [verify, setVerify] = useState(false);
+  const login = useCallback(() => {
+    setVerify(true);
+  }, []);
+
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
@@ -143,12 +157,7 @@ const App = () => {
   // const [prevPose, setPrevPose] = useState({pitch:0, roll:0, yaw:0});
   const [prevPose, setPrevPose] = useState({pitch:0, yaw:0});
 
-  const signs = {
-    pass: 'images/green-check-mark.png',
-    fail: 'images/red-x.png',
-    none: 'images/bg.png'
-  };
-  const [imgSign, setImgSign] = useState(signs.none);
+  const [imgSign, setImgSign] = useState(SIGNS.none);
   const analyzeHandler = useCallback( async() => {
     if(url){
       const result = await detectFaces(url);
@@ -177,12 +186,13 @@ const App = () => {
           // console.log("Head move!");
           // console.log(diff_pitch + ', ' + diff_roll + ', ' + diff_yaw)
 
-          setImgSign(signs.pass)
+          setVerify(false);
+          setImgSign(SIGNS.pass)
           console.log(diff_pitch + ', ' + diff_yaw)
       }
     }
   // }, [url, prevPose.pitch, prevPose.roll, prevPose.yaw]);
-  }, [url, prevPose.pitch, prevPose.yaw, signs.pass]);
+  }, [url, prevPose.pitch, prevPose.yaw, SIGNS.pass]);
 
   const getRealFaceRectBoundaries = (analyzeResult) => {
 
@@ -304,21 +314,24 @@ const App = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      capture();
-      analyzeHandler();
+      if(verify){
+        capture();
+        analyzeHandler();
+      }
     }, ANALYSIS_INTERVAL);
     return () => clearInterval(interval); // This represents the unmount function, in which we need to clear your interval to prevent memory leaks.
-  }, [capture, analyzeHandler])
+  }, [capture, analyzeHandler, verify])
 
-  const [seconds, setSeconds] = useState(10);
+  const [seconds, setSeconds] = useState(COUNTDOWN_MAX);
   useEffect(() => {
-    if (seconds > 0) {
+    if (verify && seconds > 0) {
       setTimeout(() => setSeconds(seconds - 1), 1000);
-    } else {
-      //setSeconds('BOOOOM!');
-      setImgSign(signs.fail);
+    } else if (verify) {
+      //setSeconds(COUNTDOWN_MAX);
+      setVerify(false);
+      setImgSign(SIGNS.fail);
     }
-  }, [seconds, signs.pass, signs.fail]);
+  }, [verify, seconds, SIGNS.pass, SIGNS.fail]);
 
 /* ************* */
 //    RETURN
@@ -367,27 +380,17 @@ const App = () => {
             }}
           />
         </div>
-        {/* <div>
+        <div>
           <button
           style={{
             left: videoOffset.left,
-            top: videoOffset.bottom
+            top: videoOffset.bottom + 25
           }}
-          onClick={capture}
-          >Capture!</button>
-        </div> */}
+          onClick={login}
+          >Login!</button>
+        </div>
       </>
       )}
-
-      <countdown className="countdown"
-        style={{
-          left: videoOffset.left + 200,
-          top: videoOffset.bottom + 25
-        }}
-      >
-        <h2>{seconds}</h2>
-      </countdown>
-
       <header className="header"
         style={{
           left: videoOffset.left,
@@ -399,12 +402,22 @@ const App = () => {
 
       <img src={imgSign} className="verify_icon" alt=" "
         style={{
-          left: videoOffset.left + 250,
-          top: videoOffset.bottom + 20
-      }}
+          left: videoOffset.left + 230,
+          top: videoOffset.bottom + 18
+        }}
       ></img>
-      {url && (
+
+      {url && verify && (
         <>
+          <countdown className="countdown"
+            style={{
+              left: videoOffset.left + 245,
+              top: videoOffset.bottom + 25
+            }}
+          >
+            <h2>{seconds}</h2>
+          </countdown>
+
           {/* <div>{analyzeHandler()}</div> */}
           {/* <div>{setUrl(undefined)}</div> */}
           {/* <div>
