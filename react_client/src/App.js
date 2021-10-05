@@ -1,7 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import Webcam from "react-webcam";
 import AWS from "aws-sdk";
-import { CountdownCircleTimer } from "react-countdown-circle-timer";
 
 import { drawRect } from "./draw_rect";
 
@@ -11,19 +10,6 @@ const videoConstraints = {
   facingMode: "user",
 };
 
-const renderTime = ({ remainingTime }) => {
-  if (remainingTime === 0) {
-    return <div className="timer">Too lale...</div>;
-  }
-
-  return (
-    <div className="timer">
-      <div className="text">Remaining</div>
-      <div className="value">{remainingTime}</div>
-      <div className="text">seconds</div>
-    </div>
-  );
-};
 
 /*
 https://create-react-app.dev/docs/adding-custom-environment-variables/
@@ -156,7 +142,13 @@ const App = () => {
 
   // const [prevPose, setPrevPose] = useState({pitch:0, roll:0, yaw:0});
   const [prevPose, setPrevPose] = useState({pitch:0, yaw:0});
-  const [imgPath, setImgPath] = useState('images/bg.png');
+
+  const signs = {
+    pass: 'images/green-check-mark.png',
+    fail: 'images/red-x.png',
+    none: 'images/bg.png'
+  };
+  const [imgSign, setImgSign] = useState(signs.none);
   const analyzeHandler = useCallback( async() => {
     if(url){
       const result = await detectFaces(url);
@@ -185,12 +177,12 @@ const App = () => {
           // console.log("Head move!");
           // console.log(diff_pitch + ', ' + diff_roll + ', ' + diff_yaw)
 
-          setImgPath('images/green-check-mark.png')
+          setImgSign(signs.pass)
           console.log(diff_pitch + ', ' + diff_yaw)
       }
     }
   // }, [url, prevPose.pitch, prevPose.roll, prevPose.yaw]);
-  }, [url, prevPose.pitch, prevPose.yaw]);
+  }, [url, prevPose.pitch, prevPose.yaw, signs.pass]);
 
   const getRealFaceRectBoundaries = (analyzeResult) => {
 
@@ -318,6 +310,16 @@ const App = () => {
     return () => clearInterval(interval); // This represents the unmount function, in which we need to clear your interval to prevent memory leaks.
   }, [capture, analyzeHandler])
 
+  const [seconds, setSeconds] = useState(10);
+  useEffect(() => {
+    if (seconds > 0) {
+      setTimeout(() => setSeconds(seconds - 1), 1000);
+    } else {
+      //setSeconds('BOOOOM!');
+      setImgSign(signs.fail);
+    }
+  }, [seconds, signs.pass, signs.fail]);
+
 /* ************* */
 //    RETURN
 /* ************* */
@@ -376,6 +378,16 @@ const App = () => {
         </div> */}
       </>
       )}
+
+      <countdown className="countdown"
+        style={{
+          left: videoOffset.left + 200,
+          top: videoOffset.bottom + 25
+        }}
+      >
+        <h2>{seconds}</h2>
+      </countdown>
+
       <header className="header"
         style={{
           left: videoOffset.left,
@@ -384,26 +396,13 @@ const App = () => {
         >
         <h1>Liveness Detection</h1>
       </header>
-      <img src={imgPath} className="verify_icon" alt=" "
+
+      <img src={imgSign} className="verify_icon" alt=" "
         style={{
-          left: videoOffset.left,
+          left: videoOffset.left + 250,
           top: videoOffset.bottom + 20
       }}
       ></img>
-      <div className="timer-wrapper">
-        <CountdownCircleTimer
-          style={{
-            left: videoOffset.left,
-            top: videoOffset.bottom + 20
-          }}
-          isPlaying
-          duration={10}
-          colors={[["#004777", 0.33], ["#F7B801", 0.33], ["#A30000"]]}
-          onComplete={() => [true, 1000]}
-        >
-          {renderTime}
-        </CountdownCircleTimer>
-      </div>
       {url && (
         <>
           {/* <div>{analyzeHandler()}</div> */}
