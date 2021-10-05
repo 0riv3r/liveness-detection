@@ -323,9 +323,13 @@ const App = () => {
   }, [capture, analyzeHandler, verify])
 
   const [seconds, setSeconds] = useState(COUNTDOWN_MAX);
+  const [countdownColor, setCountdownColor] = useState('green');
   useEffect(() => {
     if (verify && seconds > 0) {
       setTimeout(() => setSeconds(seconds - 1), 1000);
+      if(seconds < COUNTDOWN_MAX/2){
+        setCountdownColor('red');
+      }
     } else if (verify) {
       //setSeconds(COUNTDOWN_MAX);
       setVerify(false);
@@ -412,7 +416,8 @@ const App = () => {
           <countdown className="countdown"
             style={{
               left: videoOffset.left + 245,
-              top: videoOffset.bottom + 25
+              top: videoOffset.bottom + 25,
+              color: countdownColor
             }}
           >
             <h2>{seconds}</h2>
