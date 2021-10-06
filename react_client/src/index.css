@@ -28,6 +28,7 @@
    font-weight: 700;
    transition: 0.4s;
    cursor: pointer;
+   display: block;
  }
 
  button:hover {

@@ -127,6 +127,7 @@ const App = () => {
   const [verify, setVerify] = useState(false);
   const [seconds, setSeconds] = useState(COUNTDOWN_MAX);
   const [countdownColor, setCountdownColor] = useState('green');
+  const [loginButtonDisplay, setLoginButtonDisplay] = useState('block');
 
   // update offset according to the video frame
   const init_videoOffset = {left:0, top:0, bottom:0}
@@ -143,14 +144,18 @@ const App = () => {
   }
   
   const login = useCallback(() => {
-    setUrl(null)
-    setHeadPitchYaw(false)
-    setPrevPose({pitch:0, yaw:0})
-    setSeconds(COUNTDOWN_MAX)
-    setCountdownColor('green')
-    setImgSign(SIGNS.none)
-    setVerify(true);
-  }, []);
+    if (!verify) {
+      setLoginButtonDisplay('none')
+      setUrl(null)
+      setHeadPitchYaw(false)
+      setPrevPose({pitch:0, yaw:0})
+      setSeconds(COUNTDOWN_MAX)
+      setCountdownColor('green')
+      setImgSign(SIGNS.none)
+      setVerify(true);
+      setRekognizeResult(null);
+    }
+  }, [SIGNS.none, verify]);
 
   const capture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -164,6 +169,7 @@ const App = () => {
     if (url && verify && headPitchYaw) { 
       setVerify(false);
       setImgSign(SIGNS.pass)
+      setLoginButtonDisplay('block')
     }
   }, [url, verify, SIGNS.pass, headPitchYaw]);
   
@@ -358,6 +364,7 @@ const App = () => {
       //setSeconds(COUNTDOWN_MAX);
       setVerify(false);
       setImgSign(SIGNS.fail);
+      setLoginButtonDisplay('block')
     }
   }, [verify, seconds, SIGNS.pass, SIGNS.fail]);
 
@@ -412,7 +419,8 @@ const App = () => {
           <button
           style={{
             left: videoOffset.left,
-            top: videoOffset.bottom + 25
+            top: videoOffset.bottom + 25,
+            display: loginButtonDisplay
           }}
           onClick={login}
           >Login!</button>
