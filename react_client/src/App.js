@@ -131,7 +131,7 @@ const App = () => {
   const [faceWithinConstraints, setFaceWithinConstraints] = useState(false);
   const [chinInPlace, setChinInPlace] = useState(false);
 
-  const target_dot = {x:230, y:250};
+  const target_dot = {x:200, y:250};
 
   // update offset according to the video frame
   const init_videoOffset = {left:0, top:0, bottom:0}
