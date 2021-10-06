@@ -191,7 +191,7 @@ const App = () => {
       // const diff_roll = Math.abs(roll - prevPose.roll);
       const diff_yaw = Math.abs(yaw - prevPose.yaw);
   
-      const diff_size = 30
+      const diff_size = 25
 
       if(diff_pitch > diff_size ||
          // diff_roll > diff_size ||
@@ -247,6 +247,20 @@ const App = () => {
     }
   }
 
+  const isFaceWithinConstraintsRect = (constraints) => {
+
+    let result = false;
+    const diff_offset = 5;
+
+    if( getRealFaceRectBoundaries(analyzeResult).x - diff_offset > constraints.x &&
+        getRealFaceRectBoundaries(analyzeResult).y - diff_offset > constraints.y &&
+        getRealFaceRectBoundaries(analyzeResult).right + diff_offset < constraints.right &&
+        getRealFaceRectBoundaries(analyzeResult).bottom + diff_offset < constraints.bottom ){
+          result = true;
+        }
+    return (result);
+  }
+  
   const getFaceBoundariesConstraints = (analyzeResult) => {
     // Get Video Properties
     const videoWidth = webcamRef.current.video.videoWidth;
@@ -278,14 +292,10 @@ const App = () => {
     const right = x + width;
     const bottom = y + height;
 
-    const diff_offset = 5;
-
-    if( getRealFaceRectBoundaries(analyzeResult).x - diff_offset > x &&
-        getRealFaceRectBoundaries(analyzeResult).y - diff_offset > y &&
-        getRealFaceRectBoundaries(analyzeResult).right + diff_offset < right &&
-        getRealFaceRectBoundaries(analyzeResult).bottom + diff_offset < bottom ){
-          currFaceLocation = faceLocation.in
-        }
+    const constraints = {x, y, right, bottom};
+    if (isFaceWithinConstraintsRect(constraints)){
+      currFaceLocation = faceLocation.in
+    }
 
     const color = currFaceLocation.color
     const lineWidth = currFaceLocation.lineWidth
@@ -330,7 +340,7 @@ const App = () => {
 
     let rects = [];
     // Real face rect
-    rects.push(getRealFaceRectBoundaries(analyzeResult))
+    // rects.push(getRealFaceRectBoundaries(analyzeResult))
     // Face boundary constraints
     rects.push(getFaceBoundariesConstraints(analyzeResult))
     // Chin boundary rect
@@ -423,7 +433,7 @@ const App = () => {
             display: loginButtonDisplay
           }}
           onClick={login}
-          >Login!</button>
+          >Verify!</button>
         </div>
       </>
       )}
