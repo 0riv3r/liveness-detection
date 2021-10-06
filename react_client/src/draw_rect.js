@@ -15,12 +15,12 @@ export const drawRect = (rects, ctx) =>{
     const transparent = 'rgba(255, 0, 0, 0.5)'
 
     ctx.fillStyle = transparent;
-    ctx.lineWidth = "3";
-
+    
     for(let i=0;i<rects.length;++i){
       var rect = new Path2D();
       rect.rect(rects[i].x, rects[i].y, rects[i].width, rects[i].height);
       ctx.strokeStyle = rects[i].color;
+      ctx.lineWidth = rects[i].lineWidth;
       ctx.stroke(rect);
     }    
   }

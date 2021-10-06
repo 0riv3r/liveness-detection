@@ -108,7 +108,6 @@ const App = () => {
   let now = new Date();
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
-  const [url, setUrl] = useState(null);
 
   // constants
   const ANALYSIS_INTERVAL = 200; // every 0.2 seconds, analyze head and chin locations
@@ -119,6 +118,15 @@ const App = () => {
   };
   const COUNTDOWN_MAX = 10;
 
+  const [url, setUrl] = useState(null);
+  const [analyzeResult, setRekognizeResult] = useState();
+  // const [prevPose, setPrevPose] = useState({pitch:0, roll:0, yaw:0});
+  const [prevPose, setPrevPose] = useState({pitch:0, yaw:0});
+  const [headPitchYaw, setHeadPitchYaw] = useState(false);
+  const [imgSign, setImgSign] = useState(SIGNS.none);
+  const [verify, setVerify] = useState(false);
+  const [seconds, setSeconds] = useState(COUNTDOWN_MAX);
+  const [countdownColor, setCountdownColor] = useState('green');
 
   // update offset according to the video frame
   const init_videoOffset = {left:0, top:0, bottom:0}
@@ -133,9 +141,14 @@ const App = () => {
       })
     }
   }
-
-  const [verify, setVerify] = useState(false);
+  
   const login = useCallback(() => {
+    setUrl(null)
+    setHeadPitchYaw(false)
+    setPrevPose({pitch:0, yaw:0})
+    setSeconds(COUNTDOWN_MAX)
+    setCountdownColor('green')
+    setImgSign(SIGNS.none)
     setVerify(true);
   }, []);
 
@@ -147,17 +160,13 @@ const App = () => {
     }
   }, [webcamRef]);
 
-  const [analyzeResult, setRekognizeResult] = useState();
-  // const analyzeHandler = async () => {
-  //   const result = await detectFaces(url);
-  //   setRekognizeResult(result);
-  //   console.log(result);
-  // };
-
-  // const [prevPose, setPrevPose] = useState({pitch:0, roll:0, yaw:0});
-  const [prevPose, setPrevPose] = useState({pitch:0, yaw:0});
-
-  const [imgSign, setImgSign] = useState(SIGNS.none);
+  const verificationResults = useCallback( async() => {
+    if (url && verify && headPitchYaw) { 
+      setVerify(false);
+      setImgSign(SIGNS.pass)
+    }
+  }, [url, verify, SIGNS.pass, headPitchYaw]);
+  
   const analyzeHandler = useCallback( async() => {
     if(url){
       const result = await detectFaces(url);
@@ -185,16 +194,18 @@ const App = () => {
           // setPrevPose({pitch:pitch, roll:roll, yaw:yaw})
           // console.log("Head move!");
           // console.log(diff_pitch + ', ' + diff_roll + ', ' + diff_yaw)
-
-          setVerify(false);
-          setImgSign(SIGNS.pass)
+          
+          setHeadPitchYaw(true)
           console.log(diff_pitch + ', ' + diff_yaw)
       }
     }
   // }, [url, prevPose.pitch, prevPose.roll, prevPose.yaw]);
-  }, [url, prevPose.pitch, prevPose.yaw, SIGNS.pass]);
+  }, [url, prevPose.pitch, prevPose.yaw]);
 
   const getRealFaceRectBoundaries = (analyzeResult) => {
+
+    const color = 'purple'
+    const lineWidth = 3
 
     try {
       const x_offset = 0;
@@ -221,13 +232,12 @@ const App = () => {
       const right = x + width;
       const bottom = y + height;
 
-      const color = 'purple'
-
-      return {x, y, width, height, right, bottom, color};
+      return {x, y, width, height, right, bottom, color, lineWidth};
     } catch {
         return {x:-10, y:-10, 
                 width:0, height:0, 
-                right:0, bottom:0, color:'white'}
+                right:0, bottom:0, 
+                color:'white', lineWidth:0}
     }
   }
 
@@ -236,7 +246,17 @@ const App = () => {
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
 
-    let color = 'red'
+    const faceLocation = {
+      in:{
+        lineWidth: 3,
+        color: 'green'
+      },
+      out:{
+        lineWidth: 4,
+        color: 'red'
+      },
+    }
+    let currFaceLocation = faceLocation.out
 
     const x_offset = -20;
     const y_offset = -30;
@@ -258,10 +278,13 @@ const App = () => {
         getRealFaceRectBoundaries(analyzeResult).y - diff_offset > y &&
         getRealFaceRectBoundaries(analyzeResult).right + diff_offset < right &&
         getRealFaceRectBoundaries(analyzeResult).bottom + diff_offset < bottom ){
-          color = 'green'
+          currFaceLocation = faceLocation.in
         }
 
-    return{x, y, width,height, color};
+    const color = currFaceLocation.color
+    const lineWidth = currFaceLocation.lineWidth
+
+    return{x, y, width,height, color, lineWidth};
   }
 
   const getChinRect = (analyzeResult) => {
@@ -279,8 +302,9 @@ const App = () => {
     const width = 40;
     const height = 20; 
     const color = 'yellow'
+    const lineWidth = 2
 
-    return{x, y, width,height, color};
+    return{x, y, width,height, color, lineWidth};
   }
 
   const drawAllRects = (analyzeResult) => {
@@ -315,15 +339,15 @@ const App = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       if(verify){
+        verificationResults();
         capture();
         analyzeHandler();
       }
     }, ANALYSIS_INTERVAL);
     return () => clearInterval(interval); // This represents the unmount function, in which we need to clear your interval to prevent memory leaks.
-  }, [capture, analyzeHandler, verify])
+  }, [capture, analyzeHandler, verify, verificationResults])
 
-  const [seconds, setSeconds] = useState(COUNTDOWN_MAX);
-  const [countdownColor, setCountdownColor] = useState('green');
+  
   useEffect(() => {
     if (verify && seconds > 0) {
       setTimeout(() => setSeconds(seconds - 1), 1000);
