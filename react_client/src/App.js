@@ -247,10 +247,12 @@ const App = () => {
     }
   }
 
-  const isFaceWithinConstraintsRect = (constraints) => {
+  const isFaceWithinConstraintsRect = (analyzeResult) => {
 
     let result = false;
     const diff_offset = 5;
+
+    const constraints = getFaceBoundariesConstraints();
 
     if( getRealFaceRectBoundaries(analyzeResult).x - diff_offset > constraints.x &&
         getRealFaceRectBoundaries(analyzeResult).y - diff_offset > constraints.y &&
@@ -260,23 +262,11 @@ const App = () => {
         }
     return (result);
   }
-  
-  const getFaceBoundariesConstraints = (analyzeResult) => {
+
+  const getFaceBoundariesConstraints = () => {
     // Get Video Properties
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
-
-    const faceLocation = {
-      in:{
-        lineWidth: 3,
-        color: 'green'
-      },
-      out:{
-        lineWidth: 4,
-        color: 'red'
-      },
-    }
-    let currFaceLocation = faceLocation.out
 
     const x_offset = -20;
     const y_offset = -30;
@@ -292,15 +282,37 @@ const App = () => {
     const right = x + width;
     const bottom = y + height;
 
-    const constraints = {x, y, right, bottom};
-    if (isFaceWithinConstraintsRect(constraints)){
+    return({x, y, right, bottom, width, height});
+  }
+  
+  const getFaceBoundariesConstraintsRect = (analyzeResult) => {
+ 
+    const faceLocation = {
+      in:{
+        lineWidth: 3,
+        color: 'green'
+      },
+      out:{
+        lineWidth: 4,
+        color: 'red'
+      },
+    }
+    let currFaceLocation = faceLocation.out
+
+    if (isFaceWithinConstraintsRect(analyzeResult)){
       currFaceLocation = faceLocation.in
     }
 
     const color = currFaceLocation.color
     const lineWidth = currFaceLocation.lineWidth
 
-    return{x, y, width,height, color, lineWidth};
+    const constraints = getFaceBoundariesConstraints();
+    const x = constraints.x;
+    const y = constraints.y;
+    const width = constraints.width;
+    const height = constraints.height;
+
+    return{x, y, width, height, color, lineWidth};
   }
 
   const getChinRect = (analyzeResult) => {
@@ -342,7 +354,7 @@ const App = () => {
     // Real face rect
     // rects.push(getRealFaceRectBoundaries(analyzeResult))
     // Face boundary constraints
-    rects.push(getFaceBoundariesConstraints(analyzeResult))
+    rects.push(getFaceBoundariesConstraintsRect(analyzeResult))
     // Chin boundary rect
     rects.push(getChinRect(analyzeResult))
 
