@@ -128,6 +128,7 @@ const App = () => {
   const [seconds, setSeconds] = useState(COUNTDOWN_MAX);
   const [countdownColor, setCountdownColor] = useState('green');
   const [loginButtonDisplay, setLoginButtonDisplay] = useState('block');
+  const [faceWithinConstraints, setFaceWithinConstraints] = useState(false);
 
   // update offset according to the video frame
   const init_videoOffset = {left:0, top:0, bottom:0}
@@ -164,14 +165,6 @@ const App = () => {
       setRekognizeResult(undefined);
     }
   }, [webcamRef]);
-
-  const verificationResults = useCallback( async() => {
-    if (url && verify && headPitchYaw) { 
-      setVerify(false);
-      setImgSign(SIGNS.pass)
-      setLoginButtonDisplay('block')
-    }
-  }, [url, verify, SIGNS.pass, headPitchYaw]);
   
   const analyzeHandler = useCallback( async() => {
     if(url){
@@ -179,36 +172,40 @@ const App = () => {
       setRekognizeResult(result);
 
       const pose = getPose(result);
-      
-      // const pitch = result.FaceDetails[0].Pose.Pitch;
-      // const roll = result.FaceDetails[0].Pose.Roll;
-      // const yaw = result.FaceDetails[0].Pose.Yaw;
-
       const pitch = pose.pitch;
       const yaw = pose.yaw;
-  
-      const diff_pitch = Math.abs(pitch - prevPose.pitch);
-      // const diff_roll = Math.abs(roll - prevPose.roll);
-      const diff_yaw = Math.abs(yaw - prevPose.yaw);
-  
-      const diff_size = 25
 
-      if(diff_pitch > diff_size ||
-         // diff_roll > diff_size ||
-         diff_yaw > diff_size) {
-          setPrevPose({pitch:pitch, yaw:yaw})
-          // setPrevPose({pitch:pitch, roll:roll, yaw:yaw})
-          // console.log("Head move!");
-          // console.log(diff_pitch + ', ' + diff_roll + ', ' + diff_yaw)
-          
-          setHeadPitchYaw(true)
-          console.log(diff_pitch + ', ' + diff_yaw)
+      if(prevPose.pitch !== 0 && prevPose.yaw !== 0) {
+
+        const diff_pitch = Math.abs(pitch - prevPose.pitch);
+        // const diff_roll = Math.abs(roll - prevPose.roll);
+        const diff_yaw = Math.abs(yaw - prevPose.yaw);
+    
+        const diff_size_pitch = 20
+        const diff_size_yaw = 30
+
+        // console.log('diff_pitch: ' + diff_pitch);
+        // console.log('diff_yaw: ' + diff_yaw);
+
+        if(diff_pitch > diff_size_pitch ||
+          // diff_roll > diff_size ||
+          diff_yaw > diff_size_yaw) {
+            setPrevPose({pitch:pitch, yaw:yaw})
+            // setPrevPose({pitch:pitch, roll:roll, yaw:yaw})
+            // console.log("Head move!");
+            // console.log(diff_pitch + ', ' + diff_roll + ', ' + diff_yaw)
+            
+            setHeadPitchYaw(true)
+            console.log(diff_pitch + ', ' + diff_yaw)
+        }
+      } else {
+        setPrevPose({pitch:pitch, yaw:yaw})
       }
     }
   // }, [url, prevPose.pitch, prevPose.roll, prevPose.yaw]);
   }, [url, prevPose.pitch, prevPose.yaw]);
 
-  const getRealFaceRectBoundaries = (analyzeResult) => {
+  const getRealFaceRectBoundaries = () => {
 
     const color = 'purple'
     const lineWidth = 3
@@ -247,20 +244,27 @@ const App = () => {
     }
   }
 
-  const isFaceWithinConstraintsRect = (analyzeResult) => {
-
-    let result = false;
+  const isFaceWithinConstraintsRect = () => {
     const diff_offset = 5;
 
     const constraints = getFaceBoundariesConstraints();
 
-    if( getRealFaceRectBoundaries(analyzeResult).x - diff_offset > constraints.x &&
-        getRealFaceRectBoundaries(analyzeResult).y - diff_offset > constraints.y &&
-        getRealFaceRectBoundaries(analyzeResult).right + diff_offset < constraints.right &&
-        getRealFaceRectBoundaries(analyzeResult).bottom + diff_offset < constraints.bottom ){
-          result = true;
+    if( getRealFaceRectBoundaries().x - diff_offset > constraints.x &&
+        getRealFaceRectBoundaries().y - diff_offset > constraints.y &&
+        getRealFaceRectBoundaries().right + diff_offset < constraints.right &&
+        getRealFaceRectBoundaries().bottom + diff_offset < constraints.bottom ){
+          if(!faceWithinConstraints){
+            setFaceWithinConstraints(true);
+          }
         }
-    return (result);
+    else {
+      if(faceWithinConstraints){
+        setFaceWithinConstraints(false);
+      }
+      if(prevPose.pitch !==0 || prevPose.yaw !== 0) {
+        setPrevPose({pitch:0, yaw:0});
+      }
+    }
   }
 
   const getFaceBoundariesConstraints = () => {
@@ -285,7 +289,7 @@ const App = () => {
     return({x, y, right, bottom, width, height});
   }
   
-  const getFaceBoundariesConstraintsRect = (analyzeResult) => {
+  const getFaceBoundariesConstraintsRect = () => {
  
     const faceLocation = {
       in:{
@@ -299,7 +303,8 @@ const App = () => {
     }
     let currFaceLocation = faceLocation.out
 
-    if (isFaceWithinConstraintsRect(analyzeResult)){
+    isFaceWithinConstraintsRect();
+    if (faceWithinConstraints){
       currFaceLocation = faceLocation.in
     }
 
@@ -315,7 +320,7 @@ const App = () => {
     return{x, y, width, height, color, lineWidth};
   }
 
-  const getChinRect = (analyzeResult) => {
+  const getChinRect = () => {
     // Get Video Properties
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
@@ -335,7 +340,7 @@ const App = () => {
     return{x, y, width,height, color, lineWidth};
   }
 
-  const drawAllRects = (analyzeResult) => {
+  const drawAllRects = () => {
     // Get Video Properties
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
@@ -352,14 +357,26 @@ const App = () => {
 
     let rects = [];
     // Real face rect
-    // rects.push(getRealFaceRectBoundaries(analyzeResult))
+    // rects.push(getRealFaceRectBoundaries())
     // Face boundary constraints
-    rects.push(getFaceBoundariesConstraintsRect(analyzeResult))
+    rects.push(getFaceBoundariesConstraintsRect())
     // Chin boundary rect
-    rects.push(getChinRect(analyzeResult))
+    rects.push(getChinRect())
 
     drawRect(rects, ctx);
   }
+
+  const verificationResults = useCallback( async() => {
+    if (url && 
+        verify && 
+        headPitchYaw &&
+        faceWithinConstraints) 
+    { 
+      setVerify(false);
+      setImgSign(SIGNS.pass)
+      setLoginButtonDisplay('block')
+    }
+  }, [url, verify, SIGNS.pass, headPitchYaw, faceWithinConstraints]);
 
   const { current } = webcamRef;
   useEffect(handleUserMedia, [current, videoOffset.left, videoOffset.top]);
