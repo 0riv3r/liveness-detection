@@ -65,6 +65,9 @@
   left: "0px";
   visibility: "hidden";
   padding-top: 7%;
+  /* Horizontally flipping */
+  -webkit-transform: scaleX(-1);
+  transform: scaleX(-1);
 }
 
  .countdown {
