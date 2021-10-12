@@ -43,21 +43,49 @@ const detectFaces = async (imageData) => {
   return await rekognitionClient.detectFaces(params).promise();
 };
 
-const getNumberOfPeople = (analyzeResult) => {
-  return analyzeResult.FaceDetails.length;
+// Detects instances of real-world entities by Amazon Rekognition
+const detectLabels = async (imageData) => {
+  const params = {
+    Image: {
+      Bytes: Buffer.from(
+        imageData.replace("data:image/jpeg;base64,", ""),
+        "base64"
+      ),
+    },
+    MaxLabels: 100, 
+    MinConfidence: 60
+  };
+  return await rekognitionClient.detectLabels(params).promise();
 };
 
-// Analysis results: Confidence level
-const getConfidence = (analyzeResult) => {
-    return analyzeResult.FaceDetails[0].Confidence;
+const getNumberOfPeople = (faceAnalysis) => {
+  return faceAnalysis.FaceDetails.length;
+};
+
+const isSuspectedLabels = (labelsAnalyzeResult) => {
+  const arrSuspectedItems = ["Finger", "Arm", "Hand", "Wrist",
+                             "Tablet Computer", "Computer", "Electronics",
+                            "Screen", "Laptop", "LCD Screen", "Display",
+                            "Pc", "Monitor"];
+  let result = false;
+  for (var i = 0; i < labelsAnalyzeResult.Labels.length; ++i) {
+    var item = labelsAnalyzeResult.Labels[i];
+   
+    if(arrSuspectedItems.includes(item.Name)){
+      console.log("item.Name: " + item.Name);
+      result = true;
+      break;
+    }
+   }
+  return result;
 };
 
 // Analysis results: Pose
-const getPose = (analyzeResult) => {
+const getPose = (faceAnalysis) => {
   try {
-    const pitch = analyzeResult.FaceDetails[0].Pose.Pitch;
-    // const roll = analyzeResult.FaceDetails[0].Pose.Roll;
-    const yaw = analyzeResult.FaceDetails[0].Pose.Yaw;
+    const pitch = faceAnalysis.FaceDetails[0].Pose.Pitch;
+    // const roll = faceAnalysis.FaceDetails[0].Pose.Roll;
+    const yaw = faceAnalysis.FaceDetails[0].Pose.Yaw;
     // return {pitch, roll, yaw};
     return {pitch, yaw};
   } catch {
@@ -65,39 +93,45 @@ const getPose = (analyzeResult) => {
   }
 };
 
-// Analysis results: Eyeglasses
-const getIsWearingEyeGlasses = (analyzeResult) => {
-    return (analyzeResult.FaceDetails)[0].Eyeglasses.Value;
-};
+// // Analysis results: Confidence level
+// const getConfidence = (faceAnalysis) => {
+//     return faceAnalysis.FaceDetails[0].Confidence;
+// };
 
-// Analysis results: Sunglasses
-const getIsWearingSunGlasses = (analyzeResult) => {
-  return analyzeResult.FaceDetails[0].Sunglasses.Value;
-};
+// // Analysis results: Eyeglasses
+// const getIsWearingEyeGlasses = (faceAnalysis) => {
+//     return (faceAnalysis.FaceDetails)[0].Eyeglasses.Value;
+// };
 
-// Analysis results: Smile
-const getIsSmile = (analyzeResult) => {
-  return analyzeResult.FaceDetails[0].Smile.Value;
-};
+// // Analysis results: Sunglasses
+// const getIsWearingSunGlasses = (faceAnalysis) => {
+//   return faceAnalysis.FaceDetails[0].Sunglasses.Value;
+// };
 
-const getChinBottom = (analyzeResult) => {
+// // Analysis results: Smile
+// const getIsSmile = (faceAnalysis) => {
+//   return faceAnalysis.FaceDetails[0].Smile.Value;
+// };
+
+// // Analysis results: Left Eye
+// const getEyeLeft = (faceAnalysis) => {
+//   const x = faceAnalysis.FaceDetails[0].Landmarks[0].X,
+//         y = faceAnalysis.FaceDetails[0].Landmarks[0].Y;
+
+//   return {x,y};
+// };
+
+const getChinBottom = (faceAnalysis) => {
   try {
-    // analyzeResult.FaceDetails[0].Landmarks[27].Type ==> "chinBottom"
-    const x = analyzeResult.FaceDetails[0].Landmarks[27].X,
-          y = analyzeResult.FaceDetails[0].Landmarks[27].Y;
+    // faceAnalysis.FaceDetails[0].Landmarks[27].Type ==> "chinBottom"
+    const x = faceAnalysis.FaceDetails[0].Landmarks[27].X,
+          y = faceAnalysis.FaceDetails[0].Landmarks[27].Y;
     return {x,y};
   } catch {
     return {x:-10,y:-10};
   }
 };
 
-// Analysis results: Left Eye
-const getEyeLeft = (analyzeResult) => {
-  const x = analyzeResult.FaceDetails[0].Landmarks[0].X,
-        y = analyzeResult.FaceDetails[0].Landmarks[0].Y;
-
-  return {x,y};
-};
 
 /* ************* */
 //    APP
@@ -105,7 +139,7 @@ const getEyeLeft = (analyzeResult) => {
 
 const App = () => {
 
-  let now = new Date();
+//  let now = new Date();
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -119,7 +153,8 @@ const App = () => {
   const COUNTDOWN_MAX = 10;
 
   const [url, setUrl] = useState(null);
-  const [analyzeResult, setRekognizeResult] = useState();
+  const [faceAnalysis, setFaceAnalysis] = useState();
+  const [suspectedItems, setSuspectedItems] = useState(false);
   // const [prevPose, setPrevPose] = useState({pitch:0, roll:0, yaw:0});
   const [prevPose, setPrevPose] = useState({pitch:0, yaw:0});
   const [headPitchYaw, setHeadPitchYaw] = useState(false);
@@ -158,8 +193,9 @@ const App = () => {
       setCountdownColor('green')
       setImgSign(SIGNS.none)
       setVerify(true);
-      setRekognizeResult(null);
+      setFaceAnalysis(null);
       setChinInPlace(false);
+      setSuspectedItems(false);
     }
   }, [SIGNS.none, verify]);
 
@@ -167,16 +203,16 @@ const App = () => {
     const imageSrc = webcamRef.current?.getScreenshot();
     if (imageSrc) {
       setUrl(imageSrc);
-      setRekognizeResult(undefined);
+      setFaceAnalysis(undefined);
     }
   }, [webcamRef]);
   
   const analyzeHandler = useCallback( async() => {
     if(url){
-      const result = await detectFaces(url);
-      setRekognizeResult(result);
+      const facesResult = await detectFaces(url);
+      setFaceAnalysis(facesResult);
 
-      const pose = getPose(result);
+      const pose = getPose(facesResult);
       const pitch = pose.pitch;
       const yaw = pose.yaw;
 
@@ -206,9 +242,27 @@ const App = () => {
       } else {
         setPrevPose({pitch:pitch, yaw:yaw})
       }
+
+      if(suspectedItems !== true){
+        if(getNumberOfPeople(facesResult) !== 1){
+          setSuspectedItems(true);
+        }
+        else {
+          const labelsResult = await detectLabels(url);
+          if(isSuspectedLabels(labelsResult)){
+            setSuspectedItems(true);
+          }
+        }
+      } 
     }
   // }, [url, prevPose.pitch, prevPose.roll, prevPose.yaw]);
-  }, [url, prevPose.pitch, prevPose.yaw]);
+  }, [url, prevPose.pitch, prevPose.yaw, suspectedItems]);
+
+  // This is for immediate update of async state variable
+  useEffect(() => {
+    console.log("suspectedItems: " + suspectedItems);
+  }, [suspectedItems]);
+
 
   const getRealFaceRectBoundaries = () => {
 
@@ -218,7 +272,7 @@ const App = () => {
     try {
       const x_offset = 0;
       const y_offset = 5;
-      const face_bounding_box = analyzeResult.FaceDetails[0].BoundingBox;
+      const face_bounding_box = faceAnalysis.FaceDetails[0].BoundingBox;
       /*
       BoundingBox:
       Height: 0.41345128417015076
@@ -347,8 +401,8 @@ const App = () => {
     const y_offset = -25;
 
     // Chin boundary
-    const x = (getChinBottom(analyzeResult).x  * videoWidth) + x_offset;
-    const y = (getChinBottom(analyzeResult).y  * videoHeight) + y_offset;
+    const x = (getChinBottom(faceAnalysis).x  * videoWidth) + x_offset;
+    const y = (getChinBottom(faceAnalysis).y  * videoHeight) + y_offset;
     const width = 40;
     const height = 20; 
     const color = 'purple'
@@ -413,6 +467,7 @@ const App = () => {
 
   const verificationResults = useCallback( async() => {
     if (url && 
+        !suspectedItems &&
         verify && 
         headPitchYaw &&
         faceWithinConstraints &&
@@ -422,10 +477,20 @@ const App = () => {
       setImgSign(SIGNS.pass)
       setLoginButtonDisplay('block')
     }
-  }, [url, verify, SIGNS.pass, 
+    // invalidate immediately in certain events
+    else if (url && 
+             suspectedItems){
+      setVerify(false);
+      setImgSign(SIGNS.fail)
+      setLoginButtonDisplay('block')
+
+    }
+  }, [url, verify, 
+      SIGNS.pass, SIGNS.fail,
       headPitchYaw, 
       faceWithinConstraints,
-      chinInPlace]);
+      chinInPlace,
+      suspectedItems]);
 
   const { current } = webcamRef;
   useEffect(handleUserMedia, [current, videoOffset.left, videoOffset.top]);
@@ -563,10 +628,10 @@ const App = () => {
           {/* <div>
             <img src={url} alt="Screenshot" />
           </div> */}
-          {typeof analyzeResult !== "undefined" && (
-            <div className="analyzeResult">
-              {/* <div>{"Number of People: " + getNumberOfPeople(analyzeResult)}</div>
-              <div>{"Confidence: " + getConfidence(analyzeResult)}</div>
+          {typeof faceAnalysis !== "undefined" && (
+            <div className="faceAnalysis">
+              {/* <div>{"Number of People: " + getNumberOfPeople(faceAnalysis)}</div>
+              <div>{"Confidence: " + getConfidence(faceAnalysis)}</div>
               <div>
                 {"Now: " +
                 now.getMinutes() + ":" + 
@@ -574,43 +639,43 @@ const App = () => {
               </div>
               <div>
                 {"Pose: " +
-                  getPose(analyzeResult).pitch +
+                  getPose(faceAnalysis).pitch +
                   ", " +
-                  getPose(analyzeResult).roll + 
+                  getPose(faceAnalysis).roll + 
                   ", " +
-                  getPose(analyzeResult).yaw}
+                  getPose(faceAnalysis).yaw}
               </div>
               <div>
-                {"Eyeglasses: " + getIsWearingEyeGlasses(analyzeResult)}
+                {"Eyeglasses: " + getIsWearingEyeGlasses(faceAnalysis)}
               </div>
               <div>
-                {"Sunglasses: " + getIsWearingSunGlasses(analyzeResult)}
+                {"Sunglasses: " + getIsWearingSunGlasses(faceAnalysis)}
               </div>
               <div>
-                {"Smile: " + getIsSmile(analyzeResult)}
+                {"Smile: " + getIsSmile(faceAnalysis)}
               </div>
               <div>
                 {"Left eye: " + 
-                  getEyeLeft(analyzeResult).x + 
+                  getEyeLeft(faceAnalysis).x + 
                   ", " +
-                  getEyeLeft(analyzeResult).y}
+                  getEyeLeft(faceAnalysis).y}
               </div> */}
               <div>
-                {drawAllRects(analyzeResult)}
+                {drawAllRects(faceAnalysis)}
               </div>
               {/* <div>
-                {setFaceRectBoundaries(getFaceBoundingBox(analyzeResult).Left, 
-                      getFaceBoundingBox(analyzeResult).Top,
-                      getFaceBoundingBox(analyzeResult).Width,
-                      getFaceBoundingBox(analyzeResult).Height)}
+                {setFaceRectBoundaries(getFaceBoundingBox(faceAnalysis).Left, 
+                      getFaceBoundingBox(faceAnalysis).Top,
+                      getFaceBoundingBox(faceAnalysis).Width,
+                      getFaceBoundingBox(faceAnalysis).Height)}
               </div> */}
               {/* <div>
-                {rect(getEyeLeft(analyzeResult).x, 
-                      getEyeLeft(analyzeResult).y)}
+                {rect(getEyeLeft(faceAnalysis).x, 
+                      getEyeLeft(faceAnalysis).y)}
               </div>
               <div>
-                {rect(getChinBottom(analyzeResult).x, 
-                      getChinBottom(analyzeResult).y)}
+                {rect(getChinBottom(faceAnalysis).x, 
+                      getChinBottom(faceAnalysis).y)}
               </div> */}
               {/* <button 
               style={{
