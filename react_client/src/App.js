@@ -64,9 +64,15 @@ const getNumberOfPeople = (faceAnalysis) => {
 
 const isSuspectedLabels = (labelsAnalyzeResult) => {
   const arrSuspectedItems = ["Finger", "Arm", "Hand", "Wrist",
-                             "Tablet Computer", "Computer", "Electronics",
-                            "Screen", "Laptop", "LCD Screen", "Display",
-                            "Pc", "Monitor"];
+                             "Tablet Computer", "Computer", 
+                             "Pc", "Laptop", 
+                             "LCD Screen"
+                            ];
+                            /* 
+                              Don't add these: 
+                                "Screen", "Electronics", 
+                                "Monitor", "Display" 
+                            */
   let result = false;
   for (var i = 0; i < labelsAnalyzeResult.Labels.length; ++i) {
     var item = labelsAnalyzeResult.Labels[i];
@@ -150,7 +156,7 @@ const App = () => {
     fail: 'images/red-x.png',
     none: 'images/bg.png'
   };
-  const COUNTDOWN_MAX = 10;
+  const COUNTDOWN_MAX = 5;
 
   const [url, setUrl] = useState(null);
   const [faceAnalysis, setFaceAnalysis] = useState();
@@ -258,7 +264,12 @@ const App = () => {
   // }, [url, prevPose.pitch, prevPose.roll, prevPose.yaw]);
   }, [url, prevPose.pitch, prevPose.yaw, suspectedItems]);
 
-  // This is for immediate update of async state variable
+  // This is for immediate update of async headPitchYaw state variable
+  useEffect(() => {
+    console.log("headPitchYaw: " + headPitchYaw);
+  }, [headPitchYaw]);
+
+  // This is for immediate update of async suspectedItems state variable
   useEffect(() => {
     console.log("suspectedItems: " + suspectedItems);
   }, [suspectedItems]);
@@ -325,6 +336,11 @@ const App = () => {
       }
     }
   }
+
+  // This is for immediate update of async faceWithinConstraints state variable
+  useEffect(() => {
+    console.log("faceWithinConstraints: " + faceWithinConstraints);
+  }, [faceWithinConstraints]);
 
   const getFaceBoundariesConstraints = () => {
     // Get Video Properties
@@ -457,21 +473,30 @@ const App = () => {
     // rects.push(getRealFaceRectBoundaries())
     // Face boundary constraints
     rects.push(getFaceBoundariesConstraintsRect())
-    // Chin boundary rect
-    rects.push(getChinRect())
+
+    /* -------------------------------------------- */
+    /*        The chin and target rectangles        */
+    /*       comment to hide these rectangles       */
+   
     // Target boundary rect
     rects.push(getTargetRect());
+
+    // Chin boundary rect
+    rects.push(getChinRect())
+
+    /* -------------------------------------------- */
 
     drawRect(rects, ctx);
   }
 
   const verificationResults = useCallback( async() => {
     if (url && 
-        !suspectedItems &&
+        chinInPlace &&      // comment to stop checking the chin placement
+        !suspectedItems &&    // comment to stop checking for tablet and other medias in from of the camera
         verify && 
         headPitchYaw &&
-        faceWithinConstraints &&
-        chinInPlace) 
+        faceWithinConstraints
+       ) 
     { 
       setVerify(false);
       setImgSign(SIGNS.pass)
